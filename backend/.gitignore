@@ -6,4 +6,4 @@ tmp/
 temp/
 .DS_Store
 dist/*
-config/
+configs/
