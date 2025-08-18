@@ -1,10 +1,10 @@
 const mysql = require('mysql2');
 
 const db = mysql.createConnection({
-   host: 'localhost',
+   host: 'terraform-20250818060305828900000001.cbkk4ag2mn7a.ap-southeast-1.rds.amazonaws.com',
    port: '3306',
-   user: 'root',
-   password: '12345678',
+   user: 'admin',
+   password: 'Nghiatoila!123',
    database: 'react_node_app'
 });
 
