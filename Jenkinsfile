@@ -54,7 +54,7 @@ pipeline {
                     sh 'npm ci'
                     sh 'npm run build'
                     // Copy build thành phẩm lên FE server
-                    sh 'scp -F ssh_config -r dist/* fe-server:/home/ec2-user/3-tier-app/frontend/'
+                    sh 'scp -F $WORKSPACE/ssh_config -r dist/* fe-server:/home/ec2-user/3-tier-app/frontend/'
                 }
             }
         }
@@ -65,28 +65,28 @@ pipeline {
                     sh 'npm test'
 
                     // Xóa backend cũ trên BE server
-                    sh 'ssh -F ssh_config be-server "rm -rf /home/ec2-user/3-tier-app/backend/*"'
+                    sh 'ssh -F $WORKSPACE/ssh_config be-server "rm -rf /home/ec2-user/3-tier-app/backend/*"'
 
                     // Copy backend mới lên BE server
-                    sh 'scp -F ssh_config -r * be-server:/home/ec2-user/3-tier-app/backend/'
+                    sh 'scp -F $WORKSPACE/ssh_config -r * be-server:/home/ec2-user/3-tier-app/backend/'
 
                     // Restart backend (giả sử dùng pm2)
-                    sh 'ssh -F ssh_config be-server "cd /home/ec2-user/3-tier-app/backend && pm2 restart index.js || pm2 start index.js"'
+                    sh 'ssh -F $WORKSPACE/ssh_config be-server "cd /home/ec2-user/3-tier-app/backend && pm2 restart index.js || pm2 start index.js"'
                 }
             }
         }
         stage("Run DB Migration") {
             steps {
-                sh 'ssh -F ssh_config be-server "cd /home/ec2-user/3-tier-app/backend && npx knex migrate:latest --env production"'
+                sh 'ssh -F $WORKSPACE/ssh_config be-server "cd /home/ec2-user/3-tier-app/backend && npx knex migrate:latest --env production"'
             }
         }
     }
     post {
         success {
-            echo " CI/CD pipeline completed successfully!"
+            echo "CI/CD pipeline completed successfully!"
         }
         failure {
-            echo " CI/CD failed. Please check the logs."
+            echo "CI/CD failed. Please check the logs."
         }
     }
 }
