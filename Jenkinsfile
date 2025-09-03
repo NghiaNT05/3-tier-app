@@ -47,10 +47,8 @@ pipeline {
 
                 chmod 600 ssh_config
 
-                ssh-keyscan -H 18.143.183.0 >> known_hosts
-                ssh-keyscan -H 10.0.0.121 >> known_hosts
-                ssh-keyscan -H 10.0.10.112 >> known_hosts
-
+                ssh-keyscan -H 18.143.183.0 >> known_hosts || true
+            
                 chmod 600 known_hosts
                 '''
             }
