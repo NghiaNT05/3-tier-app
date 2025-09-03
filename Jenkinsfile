@@ -44,37 +44,45 @@ pipeline {
                     " > ssh_config
 
                     chmod 600 ssh_config
+                     ssh-keyscan -H 18.143.183.0 >> known_hosts
+                    ssh-keyscan -H 10.0.0.121 >> known_hosts
+                    ssh-keyscan -H 10.0.10.112 >> known_hosts
+
+                     chmod 600 known_hosts
                     '''
                 }
             }
         }
         stage("Build Frontend") {
-            steps {
-                dir('frontend') {
-                    sh 'npm ci'
-                    sh 'npm run build'
-                    // Copy build thành phẩm lên FE server
-                    sh 'scp -F $WORKSPACE/ssh_config -r dist/* fe-server:/home/ec2-user/3-tier-app/frontend/'
-                }
+    steps {
+        dir('frontend') {
+            script {
+                def workspace = env.WORKSPACE
+                sh """
+                    npm ci
+                    npm run build
+                    scp -F ${workspace}/ssh_config -o UserKnownHostsFile=${workspace}/known_hosts -r dist/* fe-server:/home/ec2-user/3-tier-app/frontend/
+                """
             }
         }
+    }
+}
         stage("Deploy Backend") {
-            steps {
-                dir('backend') {
-                    sh 'npm ci'
-                    sh 'npm test'
-
-                    // Xóa backend cũ trên BE server
-                    sh 'ssh -F $WORKSPACE/ssh_config be-server "rm -rf /home/ec2-user/3-tier-app/backend/*"'
-
-                    // Copy backend mới lên BE server
-                    sh 'scp -F $WORKSPACE/ssh_config -r * be-server:/home/ec2-user/3-tier-app/backend/'
-
-                    // Restart backend (giả sử dùng pm2)
-                    sh 'ssh -F $WORKSPACE/ssh_config be-server "cd /home/ec2-user/3-tier-app/backend && pm2 restart index.js || pm2 start index.js"'
-                }
+    steps {
+        dir('backend') {
+            script {
+                def workspace = env.WORKSPACE
+                sh """
+                    npm ci
+                    npm test
+                    ssh -F ${workspace}/ssh_config -o UserKnownHostsFile=${workspace}/known_hosts be-server "rm -rf /home/ec2-user/3-tier-app/backend/*"
+                    scp -F ${workspace}/ssh_config -o UserKnownHostsFile=${workspace}/known_hosts -r * be-server:/home/ec2-user/3-tier-app/backend/
+                    ssh -F ${workspace}/ssh_config -o UserKnownHostsFile=${workspace}/known_hosts be-server "cd /home/ec2-user/3-tier-app/backend && pm2 restart index.js || pm2 start index.js"
+                """
             }
         }
+    }
+}
         stage("Run DB Migration") {
             steps {
                 sh 'ssh -F $WORKSPACE/ssh_config be-server "cd /home/ec2-user/3-tier-app/backend && npx knex migrate:latest --env production"'
