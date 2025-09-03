@@ -18,46 +18,45 @@ pipeline {
                 git branch: 'main', credentialsId: 'github', url: 'git@github.com:NghiaNT05/3-tier-app.git'
             }
         }
-        stage("Prepare SSH Config") {
-            steps {
-                withCredentials([sshUserPrivateKey(
-                    credentialsId: 'jenkins-ssh-key',
-                    keyFileVariable: 'SSH_KEY'
-                )]) {
-                    script {
-                        def workspace = env.WORKSPACE
-                        sh """
-                        echo "
-                        Host bastion 
-                            HostName 18.143.183.0
-                            User ec2-user
-                            IdentityFile ${SSH_KEY}
+       stage("Prepare SSH Config") {
+    steps {
+        withCredentials([sshUserPrivateKey(
+            credentialsId: 'jenkins-ssh-key',
+            keyFileVariable: 'SSH_KEY'
+        )]) {
+            dir("${env.WORKSPACE}") {
+                sh '''
+                echo "
+                Host bastion 
+                    HostName 18.143.183.0
+                    User ec2-user
+                    IdentityFile $SSH_KEY
 
-                        Host fe-server
-                            HostName 10.0.0.121
-                            User ec2-user
-                            ProxyJump bastion
-                            IdentityFile ${SSH_KEY}
+                Host fe-server
+                    HostName 10.0.0.121
+                    User ec2-user
+                    ProxyJump bastion
+                    IdentityFile $SSH_KEY
 
-                        Host be-server
-                            HostName 10.0.10.112
-                            User ec2-user
-                            ProxyJump bastion
-                            IdentityFile ${SSH_KEY}
-                        " > ${workspace}/${SSH_CONFIG}
+                Host be-server
+                    HostName 10.0.10.112
+                    User ec2-user
+                    ProxyJump bastion
+                    IdentityFile $SSH_KEY
+                " > ssh_config
 
-                        chmod 600 ${workspace}/${SSH_CONFIG}
+                chmod 600 ssh_config
 
-                        ssh-keyscan -H 18.143.183.0 >> ${workspace}/${KNOWN_HOSTS}
-                        ssh-keyscan -H 10.0.0.121 >> ${workspace}/${KNOWN_HOSTS}
-                        ssh-keyscan -H 10.0.10.112 >> ${workspace}/${KNOWN_HOSTS}
+                ssh-keyscan -H 18.143.183.0 >> known_hosts
+                ssh-keyscan -H 10.0.0.121 >> known_hosts
+                ssh-keyscan -H 10.0.10.112 >> known_hosts
 
-                        chmod 600 ${workspace}/${KNOWN_HOSTS}
-                        """
-                    }
-                }
+                chmod 600 known_hosts
+                '''
             }
         }
+    }
+}
         stage("Build Frontend") {
             steps {
                 dir('frontend') {
