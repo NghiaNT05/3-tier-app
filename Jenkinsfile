@@ -54,7 +54,7 @@ pipeline {
                     sh 'npm ci'
                     sh 'npm run build'
                     // Copy build thành phẩm lên FE server
-                    sh 'scp -F ssh_config -r build/* fe-server:/home/ec2-user/3-tier-app/frontend/'
+                    sh 'scp -F ssh_config -r dist/* fe-server:/home/ec2-user/3-tier-app/frontend/'
                 }
             }
         }
