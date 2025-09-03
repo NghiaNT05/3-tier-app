@@ -19,45 +19,51 @@ pipeline {
             }
         }
         stage("Prepare SSH Config") {
-            steps {
-                withCredentials([sshUserPrivateKey(
-                    credentialsId: 'jenkins-ssh-key',
-                    keyFileVariable: 'SSH_KEY'
-                )]) {
-                    dir("${env.WORKSPACE}") {
-                        sh '''
-                        echo "
-                        Host bastion
-                            HostName 18.143.183.0
-                            User ec2-user
-                            IdentityFile $SSH_KEY
-                            UserKnownHostsFile ${WORKSPACE}/known_hosts
+    steps {
+        withCredentials([sshUserPrivateKey(
+            credentialsId: 'jenkins-ssh-key',
+            keyFileVariable: 'SSH_KEY'
+        )]) {
+            dir("${env.WORKSPACE}") {
+                sh '''
+                cp $SSH_KEY id_rsa
+                chmod 600 id_rsa
 
-                        Host fe-server
-                            HostName 10.0.0.121
-                            User ec2-user
-                            ProxyJump bastion
-                            IdentityFile $SSH_KEY
-                            UserKnownHostsFile ${WORKSPACE}/known_hosts
+                cat > ssh_config <<EOF
+Host bastion
+    HostName 18.143.183.0
+    User ec2-user
+    IdentityFile $WORKSPACE/id_rsa
+    UserKnownHostsFile $WORKSPACE/known_hosts
 
-                        Host be-server
-                            HostName 10.0.10.112
-                            User ec2-user
-                            ProxyJump bastion
-                            IdentityFile $SSH_KEY
-                            UserKnownHostsFile ${WORKSPACE}/known_hosts
-                        " > ssh_config
+Host fe-server
+    HostName 10.0.0.121
+    User ec2-user
+    ProxyJump bastion
+    IdentityFile $WORKSPACE/id_rsa
+    UserKnownHostsFile $WORKSPACE/known_hosts
 
-                        chmod 600 ssh_config
+Host be-server
+    HostName 10.0.10.112
+    User ec2-user
+    ProxyJump bastion
+    IdentityFile $WORKSPACE/id_rsa
+    UserKnownHostsFile $WORKSPACE/known_hosts
+EOF
 
-                        ssh-keyscan -H 18.143.183.0 > known_hosts || true
+                chmod 600 ssh_config
 
-                        chmod 600 known_hosts
-                        '''
-                    }
-                }
+                ssh-keyscan -H 18.143.183.0 > known_hosts || true
+                ssh-keyscan -H 10.0.0.121 >> known_hosts || true
+                ssh-keyscan -H 10.0.10.112 >> known_hosts || true
+
+                chmod 600 known_hosts
+                '''
             }
         }
+    }
+}
+
         stage("Build Frontend") {
             steps {
                 dir('frontend') {
