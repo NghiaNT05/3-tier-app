@@ -84,43 +84,44 @@ EOF
             }
         }
 
-        stage("Deploy Backend") {
-            steps {
-                dir('backend') {
-                    script {
-                        def workspace = env.WORKSPACE
-                        sh """
-                            npm ci
-                            # npm test
+stage("Deploy Backend") {
+    steps {
+        dir('backend') {
+            script {
+                def workspace = env.WORKSPACE
+                sh """
+                    npm ci
+                    # npm test
 
-                            ssh -F ${workspace}/${SSH_CONFIG} be-server "rm -rf /home/ec2-user/3-tier-app/backend/*"
+                    ssh -F ${workspace}/${SSH_CONFIG} be-server "rm -rf /home/ec2-user/3-tier-app/backend/*"
 
-                            scp -F ${workspace}/${SSH_CONFIG} -r * be-server:/home/ec2-user/3-tier-app/backend/
+                    scp -F ${workspace}/${SSH_CONFIG} -r * be-server:/home/ec2-user/3-tier-app/backend/
 
-                            ssh -F ${workspace}/${SSH_CONFIG} be-server "\
-                                export PATH=\\\$PATH:/home/ec2-user/.npm-global/bin && \
-                                cd /home/ec2-user/3-tier-app/backend && \
-                                pm2 restart server.js || pm2 start server.js"
-                        """
-                    }
-                }
-            }
-        }
-
-        stage("Run DB Migration") {
-            steps {
-                script {
-                    def workspace = env.WORKSPACE
-                    sh """
-                        ssh -F ${workspace}/${SSH_CONFIG} be-server "\
-                            export PATH=\\\$PATH:/home/ec2-user/.npm-global/bin && \
-                            cd /home/ec2-user/3-tier-app/backend && \
-                            npx knex migrate:latest --env production"
-                    """
-                }
+                    ssh -F ${workspace}/${SSH_CONFIG} be-server "\
+                        export PATH=\\\$PATH:/home/ec2-user/.npm-global/bin && \
+                        cd /home/ec2-user/3-tier-app/backend && \
+                        pm2 restart server.js || pm2 start server.js"
+                """
             }
         }
     }
+}
+
+stage("Run DB Migration") {
+    steps {
+        script {
+            def workspace = env.WORKSPACE
+            sh """
+                ssh -F ${workspace}/${SSH_CONFIG} be-server "\
+                    export PATH=\\\$PATH:/home/ec2-user/.npm-global/bin && \
+                    cd /home/ec2-user/3-tier-app/backend && \
+                    npm ci && \
+                    npx knex migrate:latest --env production"
+            """
+        }
+    }
+}
+
 
     post {
         success {
@@ -130,4 +131,5 @@ EOF
             echo " CI/CD failed. Please check the logs."
         }
     }
+}
 }
