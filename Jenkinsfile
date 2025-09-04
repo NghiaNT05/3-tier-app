@@ -2,7 +2,6 @@ pipeline {
     agent any
     environment {
         SSH_CONFIG = 'ssh_config'
-        KNOWN_HOSTS = 'known_hosts'
     }
     tools {
         nodejs 'nodejs-18'
@@ -13,60 +12,59 @@ pipeline {
                 cleanWs()
             }
         }
+
         stage("Checkout from SCM") {
             steps {
                 git branch: 'main', credentialsId: 'github', url: 'git@github.com:NghiaNT05/3-tier-app.git'
             }
         }
+
         stage("Prepare SSH Config") {
-    steps {
-        withCredentials([sshUserPrivateKey(
-            credentialsId: 'jenkins-ssh-key',
-            keyFileVariable: 'SSH_KEY'
-        )]) {
-            dir("${env.WORKSPACE}") {
-                script {
-                    def keyPath = "${env.WORKSPACE}/id_rsa"
-                    def knownHostsPath = "${env.WORKSPACE}/known_hosts"
+            steps {
+                withCredentials([sshUserPrivateKey(
+                    credentialsId: 'jenkins-ssh-key',
+                    keyFileVariable: 'SSH_KEY'
+                )]) {
+                    dir("${env.WORKSPACE}") {
+                        script {
+                            def keyPath = "${env.WORKSPACE}/id_rsa"
 
-                    sh """
-                        cp "${SSH_KEY}" "${keyPath}"
-                        chmod 600 "${keyPath}"
+                            sh """
+                                cp "${SSH_KEY}" "${keyPath}"
+                                chmod 600 "${keyPath}"
 
-                        cat > ssh_config <<EOF
+                                cat > ssh_config <<EOF
 Host bastion
     HostName 18.143.183.0
     User ec2-user
     IdentityFile ${keyPath}
-    UserKnownHostsFile ${knownHostsPath}
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
 
 Host fe-server
     HostName 10.0.0.121
     User ec2-user
     ProxyJump bastion
     IdentityFile ${keyPath}
-    UserKnownHostsFile ${knownHostsPath}
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
 
 Host be-server
     HostName 10.0.10.112
     User ec2-user
     ProxyJump bastion
     IdentityFile ${keyPath}
-    UserKnownHostsFile ${knownHostsPath}
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
 EOF
 
-                        chmod 600 ssh_config
-
-                        ssh-keyscan -H 18.143.183.0 > "${knownHostsPath}" || true
-                        ssh-keyscan -H 10.0.0.121 >> "${knownHostsPath}" || true
-                        ssh-keyscan -H 10.0.10.112 >> "${knownHostsPath}" || true
-                        chmod 600 "${knownHostsPath}"
-                    """
+                                chmod 600 ssh_config
+                            """
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
         stage("Build Frontend") {
             steps {
@@ -82,6 +80,7 @@ EOF
                 }
             }
         }
+
         stage("Deploy Backend") {
             steps {
                 dir('backend') {
@@ -98,6 +97,7 @@ EOF
                 }
             }
         }
+
         stage("Run DB Migration") {
             steps {
                 script {
@@ -109,12 +109,13 @@ EOF
             }
         }
     }
+
     post {
         success {
-            echo "CI/CD pipeline completed successfully!"
+            echo " CI/CD pipeline completed successfully!"
         }
         failure {
-            echo "CI/CD failed. Please check the logs."
+            echo " CI/CD failed. Please check the logs."
         }
     }
 }
